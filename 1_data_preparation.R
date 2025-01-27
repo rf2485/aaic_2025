@@ -1,4 +1,5 @@
 library(tidyverse)
+library(labelVector)
 #replace with location for your CamCan data
 basedir = "/Volumes/Research/lazarm03lab/labspace/AD/camcan995/"
 data_dir = file.path(basedir, "source_materials")
@@ -38,6 +39,30 @@ participants$SCD <- participants$homeint_v230
 participants$SCD[participants$SCD == 1] <- FALSE
 participants$SCD[participants$SCD == 2] <- TRUE
 participants$SCD[is.na(participants$SCD)] <- FALSE
+participants$SCD <- factor(participants$SCD,
+                           levels = c(1,0),
+                           labels = c('SCD', 'Control'))
+participants[participants$participant_id=="sub-CC610050", "mt_tr"] <- 30 #from json
+participants[participants$participant_id=="sub-CC620821", "mt_tr"] <- 50 #from json
+participants$mt_tr <- factor(participants$mt_tr,
+                             levels = c(30, 50),
+                             labels = c("TR=30ms", "TR=50ms"))
+participants$Income <- factor(participants$homeint_v15,
+                              levels = c("D", "B", "C", "A", "F", "E"),
+                              labels = c("Less than  £18000", 
+                                         "£18000 to 30999", 
+                                         "£31000 to 51999",
+                                         "£52000 to 100000",
+                                         "Greater than £100000",
+                                         "Prefer not to answer"))
+participants$Ethnicity <- factor(participants$homeint_v24,
+                                     levels = c(1,2,3,4,6),
+                                     labels = c("White", "Mixed", "Asian", "Black", "Other"))
+participants$Sex <- str_to_title(participants$sex)
+participants$age_education_completed <- participants$homeint_v74
+participants <- set_label(participants,
+                          age = "Age (Years)",
+                          age_education_completed = "Age Education Completed (Years)")
 
 #all DWI participants
 #replace with location of your dwi participants.tsv
@@ -46,7 +71,6 @@ dwi_participants = read_tsv(file.path(data_dir, "imaging/dwi/participants.tsv"))
   left_join(., participants, by='participant_id')
 #DWI participants over age 55
 dwi_over_55 = dwi_participants %>% filter(age > 55)
-write_tsv(dwi_over_55, "dwi_over_55.tsv") #write to file
 
 #all MTI participants
 #replace with location of your mti participants.tsv
@@ -57,9 +81,10 @@ mti_participants = read_tsv(file.path(data_dir, "imaging/mti/participants.tsv"))
 #MTI participants over age 55
 mti_over_55 = mti_participants %>% filter(age > 55) %>% 
   filter(participant_id != "sub-CC410129") #error in scanning protocol, mti TR=34ms bl TR=30ms
-mti_over_55[mti_over_55$participant_id=="sub-CC610050", "mt_tr"] <- 30 #from json
-mti_over_55[mti_over_55$participant_id=="sub-CC620821", "mt_tr"] <- 50 #from json
-write_tsv(mti_over_55, "mti_over_55.tsv")
 #separate by TR
 mti_over_55_tr50 <- mti_over_55 %>% filter(mt_tr == 50)
 mti_over_55_tr30 <- mti_over_55 %>% filter(mt_tr == 30)
+
+#dwi and mti participants
+dwi_mti_over_55 <- full_join(dwi_over_55, mti_over_55)
+write_tsv(dwi_mti_over_55, "dwi_mti_over_55.tsv")

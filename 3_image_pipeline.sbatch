@@ -7,13 +7,13 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --time=12:00:00
 #SBATCH --mem=32G
-#SBATCH --array=1-325
+#SBATCH --array=1-326
 #SBATCH -o ./slurm_output/3_image_pipeline/slurm-%A_%a.out
 
 basedir=/gpfs/data/lazarlab/CamCan995/
-projectdir=$basedir/derivatives/scd/main/
+projectdir=$basedir/derivatives/scd/aaic_2025/
 
-subj_list=$(cut -f1 -d$'\t' $projectdir/dwi_over_55.tsv)
+subj_list=$(cut -f1 -d$'\t' $projectdir/dwi_mti_over_55.tsv)
 subj_list=($subj_list)
 subj_num=$(($SLURM_ARRAY_TASK_ID))
 j=${subj_list[$subj_num]}
@@ -41,12 +41,12 @@ source $FSLDIR/etc/fslconf/fsl.sh
 module load matlab/R2024a
 
 #recon-all-clinical to generate segmentations
-if [ ! -f $freesurferdir/$j/mri/wmparc.mgz ]; then
+if [ ! -f $freesurferdir/$j/mri/wmparc.mgz ] && [ -f ${rawanat}_T1w.nii.gz ]; then
 	rm $freesurferdir/$j/scripts/IsRunning.lh+rh
 	recon-all-clinical.sh ${rawanat}_T1w.nii.gz $j 4 $freesurferdir
 fi
 
-if [ ! -f $freesurferdir/$j/label/BA_exvivo.thresh.ctab ]; then
+if [ ! -f $freesurferdir/$j/label/BA_exvivo.thresh.ctab ] && [ -f ${rawanat}_T1w.nii.gz ]; then
 	mkdir -p $freesurferdir/$j/mri/orig
 	mri_convert ${rawanat}_T1w.nii.gz $freesurferdir/$j/mri/orig/001.mgz
 	##create files necessary for bbregister
@@ -54,7 +54,7 @@ if [ ! -f $freesurferdir/$j/label/BA_exvivo.thresh.ctab ]; then
 fi
 
 #diffusion preproc step 1
-if [ ! -f $designerdir/residual.nii.gz ]; then
+if [ ! -f $designerdir/residual.nii.gz ] && [ -f $rawdwi.nii.gz ]; then
 	##concatenate and convert raw dwi
 	singularity exec --nv --bind $basedir $basedir/neurodock_v1.0.0.sif mrconvert -json_import $rawdwi.json -fslgrad $rawdwi.bvec $rawdwi.bval $rawdwi.nii.gz $designerdir/working.mif -force
 	singularity exec --nv --bind $basedir $basedir/neurodock_v1.0.0.sif mrconvert $designerdir/working.mif -json_export $designerdir/dwi_raw.json -export_grad_fsl $designerdir/dwi_raw.bvec $designerdir/dwi_raw.bval $designerdir/dwi_raw.nii -force
@@ -73,7 +73,7 @@ if [ ! -f $designerdir/residual.nii.gz ]; then
 fi
 
 #diffusion preproc step 2
-if [ ! -f $synb0out/b0_all.mif ]; then
+if [ ! -f $synb0out/b0_all.mif ] && [ -f $rawdwi.nii.gz ]; then
 	##move and convert degibbsed files
 	cp $designerdir/dwi_raw.json $intdir/2_dwi_degibbs.json
 	singularity exec --nv --bind $basedir $basedir/neurodock_v1.0.0.sif mrconvert -json_import $intdir/2_dwi_degibbs.json -fslgrad $intdir/2_dwi_degibbs.bvec $intdir/2_dwi_degibbs.bval $intdir/2_dwi_degibbs.nii $designerdir/working.mif -force
@@ -93,7 +93,7 @@ if [ ! -f $synb0out/b0_all.mif ]; then
 fi
 
 #diffusion preproc step 3
-if [ ! -f $intdir/2_dwi_undistorted.nii ]; then
+if [ ! -f $intdir/2_dwi_undistorted.nii ] && [ -f $rawdwi.nii.gz ]; then
 	##gather files for eddy_correct
 	mkdir -p $designerdir/tmp/
 	cp $synb0out/b0_all.mif $designerdir/tmp/se_epi.mif
@@ -171,8 +171,8 @@ if [ ! -f $intdir/2_dwi_undistorted.nii ]; then
 	rm -rf $designerdir/tmp/
 fi
 
-#diffusion preproc step 4 and model fitting
-if [ ! -f $designerdir/metrics/dki_dsistudio.fib ]; then
+#diffusion preproc step 4
+if [ ! -f $designerdir/metrics/dki_dsistudio.fib ] && [ -f $rawdwi.nii.gz ]; then
 	singularity exec --bind $basedir/ $basedir/neurodock_v1.0.0.sif mrconvert -json_import $intdir/2_dwi_undistorted.json -fslgrad $intdir/2_dwi_undistorted.bvec $intdir/2_dwi_undistorted.bval $intdir/2_dwi_undistorted.nii $designerdir/working.mif -force
 	##brain mask
 	mkdir -p $designerdir/tmp/
@@ -185,17 +185,17 @@ if [ ! -f $designerdir/metrics/dki_dsistudio.fib ]; then
 	cd $designerdir
 	rm -rf $designerdir/tmp/
 fi
-if [ ! -f $designerdir/metrics/dti_V1.nii.gz ]; then
+if [ ! -f $designerdir/metrics/dti_V1.nii.gz ] && [ -f $rawdwi.nii.gz ]; then
 	##calculate colormap from diffusion tensor
 	singularity exec --nv --bind $basedir $basedir/neurodock_v1.0.0.sif tensor2metric $designerdir/metrics/DT.nii -vector $designerdir/metrics/dti_V1.nii.gz -modulate none -force
 fi
-if [ ! -f $designerdir/AMICO/NODDI/fit_FWF.nii.gz ]; then
+if [ ! -f $designerdir/AMICO/NODDI/fit_FWF.nii.gz ] && [ -f $rawdwi.nii.gz ]; then
 	##fit NODDI model using the AMICO program
 	conda deactivate
 	source activate ~/.conda/envs/amico/
 	python3 $projectdir/amico_noddi.py $j
 fi
-if [ ! -f $designerdir/FWF_mask.nii.gz ]; then
+if [ ! -f $designerdir/FWF_mask.nii.gz ] && [ -f $rawdwi.nii.gz ]; then
 	##mask voxels with orientation dispersion > 0.8 or free water > 0.7 (Correia et al.)
 	cd $designerdir
 	mri_binarize --i AMICO/NODDI/fit_ODI.nii.gz --max 0.8 --o ODI_mask.nii.gz
@@ -203,7 +203,7 @@ if [ ! -f $designerdir/FWF_mask.nii.gz ]; then
 fi
 
 #generate diffusion Freesurfer stats
-if [ ! -f $freesurferdir/$j/diffusion/b02fs.lta ]; then
+if [ ! -f $freesurferdir/$j/diffusion/b02fs.lta ] && [ -f $rawdwi.nii.gz ]; then
 	cd $freesurferdir/$j/
 	mkdir -p diffusion
 	## copy B0 to freesurferdir
@@ -211,14 +211,14 @@ if [ ! -f $freesurferdir/$j/diffusion/b02fs.lta ]; then
 	## register B0 to t1
 	bbregister --s ${j} --mov diffusion/B0.nii.gz --reg diffusion/b02fs.lta --dti --init-fsl --9
 fi
-if [ ! -f $freesurferdir/$j/diffusion/aparc+aseg2diff_NODDI_mask.mgz ]; then
+if [ ! -f $freesurferdir/$j/diffusion/aparc+aseg2diff_NODDI_mask.mgz ] && [ -f $rawdwi.nii.gz ]; then
 	## use inverse of b02fs registration to register aparc+aseg to diffusion, then apply NODDI masks	
 	cd $freesurferdir/$j/
 	mri_vol2vol --mov diffusion/B0.nii.gz --targ mri/aparc+aseg.mgz --inv --interp nearest --o diffusion/aparc+aseg2diff.mgz --reg diffusion/b02fs.lta --no-save-reg
 	mri_mask diffusion/aparc+aseg2diff.mgz $designerdir/FWF_mask.nii.gz diffusion/aparc+aseg2diff_FWF_mask.mgz
 	mri_mask diffusion/aparc+aseg2diff_FWF_mask.mgz $designerdir/ODI_mask.nii.gz diffusion/aparc+aseg2diff_NODDI_mask.mgz
 fi
-if [ ! -f $freesurferdir/$j/diffusion/fit_ODI.nii.gz ]; then
+if [ ! -f $freesurferdir/$j/diffusion/fit_ODI.nii.gz ] && [ -f $rawdwi.nii.gz ]; then
 	## copy diffusion metrics to freesurferdir
 	cd $freesurferdir/$j/
 	nii_list=( dki_ak dki_kfa dki_mk dki_mkt dki_rk dti_ad dti_fa dti_md dti_rd )
@@ -229,15 +229,15 @@ if [ ! -f $freesurferdir/$j/diffusion/fit_ODI.nii.gz ]; then
 	for meas in "${noddi_list[@]}"; do
 		cp $designerdir/AMICO/NODDI/${meas}.nii.gz diffusion/
 	done
-fi	
-if [ ! -f $freesurferdir/$j/stats/aparc+aseg2fit_ODI.stats ]; then	
-	## apply registered aparc+aseg, AD signature mask, and JHU to diffusion metrics to generate stats
+fi
+	
+if [ ! -f $freesurferdir/$j/stats/aparc+aseg2fit_ODI.stats ] && [ -f $rawdwi.nii.gz ]; then	
+	## apply registered aparc+aseg to diffusion metrics to generate stats
 	cd $freesurferdir/$j/
 	diff_meas_list=( dki_ak dki_kfa dki_mk dki_mkt dki_rk dti_ad dti_fa dti_md dti_rd fit_FWF fit_NDI fit_ODI )
 	for meas in "${diff_meas_list[@]}"; do
-		### generate stats
-		mri_segstats --seg diffusion/aparc+aseg2diff_NODDI_mask.mgz --ctab $FREESURFER_HOME/FreeSurferColorLUT.txt --i diffusion/${meas}.nii.gz --sum stats/aparc+aseg2${meas}.stats --excludeid 0 30 31 62 63 72 77 78 79 80 81 82 85
-	done	
+		mri_segstats --seg diffusion/aparc+aseg2diff_NODDI_mask.mgz --ctab $FREESURFER_HOME/FreeSurferColorLUT.txt --i diffusion/${meas}.nii.gz --sum stats/aparc+aseg2${meas}.stats --excludeid 0 30 31 62 63 72 77 78 79 80 81 82 85 2 7 41 46 251 252 253 254 255
+	done
 fi
 
 # mtr analysis
@@ -248,18 +248,18 @@ if [ ! -f $freesurferdir/$j/mti/mti_raw.nii.gz ] && [ -f ${rawmti}_mti_bl.nii.gz
 	cp ${rawmti}_mti_bl.nii.gz mti_bl_raw.nii.gz
 	cp  ${rawmti}_mti.nii.gz mti_raw.nii.gz
 fi
-if [ ! -f $freesurferdir/$j/intermediate/1_mti_reg.nii.gz ] && [ -f ${rawmti}_mti_bl.nii.gz ]; then
+if [ ! -f $freesurferdir/$j/mti/intermediate/1_mti_reg.nii.gz ] && [ -f ${rawmti}_mti_bl.nii.gz ]; then
 	##register mti_bl and mti
 	cd $freesurferdir/$j/mti
 	flirt -in mti_raw -ref mti_bl_raw -dof 6 -out intermediate/1_mti_reg
 fi
-if [ ! -f $freesurferdir/$j/intermediate/2_mti_degibbs.nii.gz ] && [ -f ${rawmti}_mti_bl.nii.gz ]; then
+if [ ! -f $freesurferdir/$j/mti/intermediate/2_mti_degibbs.nii.gz ] && [ -f ${rawmti}_mti_bl.nii.gz ]; then
 	#degibbs mti_bl and registered mti
 	cd $freesurferdir/$j/mti
 	singularity exec --nv --bind $basedir $basedir/neurodock_v1.0.0.sif mrdegibbs mti_bl_raw.nii.gz intermediate/2_mti_bl_degibbs.nii.gz
 	singularity exec --nv --bind $basedir $basedir/neurodock_v1.0.0.sif mrdegibbs intermediate/1_mti_reg.nii.gz intermediate/2_mti_degibbs.nii.gz
 fi
-if [ ! -f $freesurferdir/$j/mtr.nii.gz ] && [ -f ${rawmti}_mti_bl.nii.gz ]; then
+if [ ! -f $freesurferdir/$j/mti/mtr.nii.gz ] && [ -f ${rawmti}_mti_bl.nii.gz ]; then
 	cd $freesurferdir/$j/mti
 	##calculate mtr
 	fslmaths intermediate/2_mti_bl_degibbs.nii.gz -sub intermediate/2_mti_degibbs.nii.gz -div intermediate/2_mti_bl_degibbs.nii.gz -thr 0 -uthr 1 mtr.nii.gz
@@ -276,12 +276,12 @@ if [ ! -f $freesurferdir/$j/mti/aparc+aseg2mtr.mgz ] && [ -f ${rawmti}_mti_bl.ni
 	cd $freesurferdir/$j
 	mri_easywarp --i mri/aparc+aseg.mgz --o mti/aparc+aseg2mtr.mgz --field mti/fs2mtr_field.mgz --threads 4 --nearest
 fi
-if [ ! -f $freesurferdir/$j/stats/aparc+aseg2mtr.stats ] && [ -f ${rawmti}_mti_bl.nii.gz ]; then
-	## apply registered aparc+aseg, AD signature mask, and JHU to mtr to generate stats
+if [ ! -f $freesurferdir/$j/stats/jhu2mtr.stats ] && [ -f ${rawmti}_mti_bl.nii.gz ]; then
+	## apply registered aparc+aseg to mtr to generate stats
 	cd $freesurferdir/$j
-	mri_segstats --seg mti/aparc+aseg2mtr.mgz --ctab $FREESURFER_HOME/FreeSurferColorLUT.txt --i mti/mtr.nii.gz --sum stats/aparc+aseg2mtr.stats --excludeid 0 30 31 62 63 72 77 78 79 80 81 82 85
+	mri_segstats --seg mti/aparc+aseg2mtr.mgz --ctab $FREESURFER_HOME/FreeSurferColorLUT.txt --i mti/mtr.nii.gz --sum stats/aparc+aseg2mtr.stats --excludeid 0 30 31 62 63 72 77 78 79 80 81 82 85 2 7 41 46 251 252 253 254 255
 fi
-if [ ! -f $freesurferdir/$j/stats/mtr_gm.stats ] && [ -f ${rawmti}_mti_bl.nii.gz ]; then
+if [ ! -f $freesurferdir/$j/stats/mtr_gm.stats ]; then
 	##whole brain WM and GM in MTR (to choose which TR has better contrast)
 	cd $freesurferdir/$j
 	mri_binarize --i mti/aparc+aseg2mtr.mgz --all-wm --o mti/mtr_wm.mgz #all wm
@@ -289,4 +289,3 @@ if [ ! -f $freesurferdir/$j/stats/mtr_gm.stats ] && [ -f ${rawmti}_mti_bl.nii.gz
 	mri_segstats --seg mti/mtr_wm.mgz --mask mti/mtr_wm.mgz --excludeid 0 --i mti/mtr.nii.gz --sum stats/mtr_wm.stats
 	mri_segstats --seg mti/mtr_gm.mgz --mask mti/mtr_gm.mgz --excludeid 0 --i mti/mtr.nii.gz --sum stats/mtr_gm.stats
 fi
-	
