@@ -38,7 +38,6 @@ module load miniconda3/gpu/4.9.2
 source activate ~/.conda/envs/fsl_eddy/
 export FSLDIR=$CONDA_PREFIX
 source $FSLDIR/etc/fslconf/fsl.sh
-module load matlab/R2024a
 
 #recon-all-clinical to generate segmentations
 if [ ! -f $freesurferdir/$j/mri/wmparc.mgz ] && [ -f ${rawanat}_T1w.nii.gz ]; then
@@ -276,12 +275,12 @@ if [ ! -f $freesurferdir/$j/mti/aparc+aseg2mtr.mgz ] && [ -f ${rawmti}_mti_bl.ni
 	cd $freesurferdir/$j
 	mri_easywarp --i mri/aparc+aseg.mgz --o mti/aparc+aseg2mtr.mgz --field mti/fs2mtr_field.mgz --threads 4 --nearest
 fi
-if [ ! -f $freesurferdir/$j/stats/jhu2mtr.stats ] && [ -f ${rawmti}_mti_bl.nii.gz ]; then
+if [ ! -f $freesurferdir/$j/stats/aparc+aseg2mtr.stats ] && [ -f ${rawmti}_mti_bl.nii.gz ]; then
 	## apply registered aparc+aseg to mtr to generate stats
 	cd $freesurferdir/$j
 	mri_segstats --seg mti/aparc+aseg2mtr.mgz --ctab $FREESURFER_HOME/FreeSurferColorLUT.txt --i mti/mtr.nii.gz --sum stats/aparc+aseg2mtr.stats --excludeid 0 30 31 62 63 72 77 78 79 80 81 82 85 2 7 41 46 251 252 253 254 255
 fi
-if [ ! -f $freesurferdir/$j/stats/mtr_gm.stats ]; then
+if [ ! -f $freesurferdir/$j/stats/mtr_gm.stats ] && [ -f ${rawmti}_mti_bl.nii.gz ]; then
 	##whole brain WM and GM in MTR (to choose which TR has better contrast)
 	cd $freesurferdir/$j
 	mri_binarize --i mti/aparc+aseg2mtr.mgz --all-wm --o mti/mtr_wm.mgz #all wm
