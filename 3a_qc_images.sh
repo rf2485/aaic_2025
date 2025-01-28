@@ -1,6 +1,6 @@
 # basedir=/gpfs/data/lazarlab/CamCan995/
 basedir=/Volumes/Research/lazarm03lab/labspace/AD/camcan995/
-projectdir=$basedir/derivatives/scd/main/
+projectdir=$basedir/derivatives/scd/aaic_2025/
 t1dir=$projectdir/freesurfer/
 dwidir=$projectdir/dwi_processed/
 
@@ -41,7 +41,7 @@ fi
 mkdir -p $dwidir/group_qc/intermediate_nifti
 mkdir -p $dwidir/group_qc/metrics
 
-nii_list=( dwi_raw noisemap residual intermediate_nifti/1_dwi_denoised intermediate_nifti/2_dwi_degibbs intermediate_nifti/2_dwi_undistorted intermediate_nifti/3_dwi_smoothed intermediate_nifti/4_dwi_rician B0 B1000 B2000 metrics/dti_md metrics/dti_rd metrics/dti_ad metrics/dti_fa metrics/dki_mk metrics/dki_rk metrics/dki_ak metrics/dki_kfa metrics/dki_mkt metrics/smi_matlab_Da metrics/smi_matlab_DePar metrics/smi_matlab_DePerp metrics/smi_matlab_f metrics/smi_matlab_p2 )
+nii_list=( dwi_raw noisemap residual intermediate_nifti/1_dwi_denoised intermediate_nifti/2_dwi_degibbs intermediate_nifti/2_dwi_undistorted intermediate_nifti/3_dwi_smoothed intermediate_nifti/4_dwi_rician B0 B1000 B2000 metrics/dti_md metrics/dti_rd metrics/dti_ad metrics/dti_fa metrics/dki_mk metrics/dki_rk metrics/dki_ak metrics/dki_kfa metrics/dki_mkt )
 for i in "${nii_list[@]}"; do
 	if [ ! -f $dwidir/group_qc/$i/index.html ]; then
 		slicesdir $dwidir/*/${i}.nii

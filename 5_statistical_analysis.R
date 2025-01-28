@@ -158,11 +158,13 @@ right_amygdala_table <- right_amygdala %>%
 tbl_merge(list(left_amygdala_table, right_amygdala_table),
           tab_spanner = c("**Left Amygdala**", "**Right Amygdala**"))
 
+#so education can be compared to other covariates:
 right_amygdala_na_omit <- mutate(right_amygdala,
                       across(where(is.factor),~fct_explicit_na(.,'Unknown'))) %>%
   na.omit(.)
 
-#scatterplots: neurodegen and demyelination
+#scatterplots: neurodegen and demyelination/protein aggregation
+#first assess if each covariate improves the model. Discard if ANOVA is not significant.
 KFA_by_NDI <- lm(dki_kfa ~ fit_NDI, right_amygdala_na_omit)
 KFA_by_NDI_scd <- lm(dki_kfa ~ fit_NDI + SCD, right_amygdala_na_omit)
 anova(KFA_by_NDI, KFA_by_NDI_scd)
@@ -178,6 +180,7 @@ KFA_by_NDI_age_sex_ethnicity <- lm(dki_kfa ~ fit_NDI + age + Sex + Ethnicity, ri
 anova(KFA_by_NDI_age_sex, KFA_by_NDI_age_sex_ethnicity)
 
 #image width 570 height 481
+#only education has NAs and we are not using it, so switch back to full dataset
 KFA_by_NDI_age_sex <- lm(dki_kfa ~ fit_NDI + age + Sex, right_amygdala)
 adj_r_squared <- summary(KFA_by_NDI_age_sex)$adj.r.squared
 model_p_value <- pf(summary(KFA_by_NDI_age_sex)$fstatistic[1], 
@@ -187,7 +190,7 @@ model_p_value <- pf(summary(KFA_by_NDI_age_sex)$fstatistic[1],
 pr <- predict_response(KFA_by_NDI_age_sex, c( "fit_NDI [all]"))
 plot(pr, show_data = T, dot_alpha = 1, colors = "darkorange") + 
   labs(
-    title = "Mean Right Amygdala KFA and NDI, Corrected by Age and Sex",
+    title = "A. Mean Right Amygdala KFA and NDI, Corrected by Age and Sex",
     subtitle = paste0("** p = ", signif(model_p_value, 2),
                       ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
   theme(plot.title = element_text(hjust = 0.5),
@@ -203,7 +206,7 @@ model_p_value <- pf(summary(MK_by_NDI_age_sex)$fstatistic[1],
 pr <- predict_response(MK_by_NDI_age_sex, c( "fit_NDI [all]"))
 plot(pr, show_data = T, dot_alpha = 1, colors = "darkorange") + 
   labs(
-    title = "Mean Right Amygdala MK and NDI, Corrected by Age and Sex",
+    title = "B. Mean Right Amygdala MK and NDI, Corrected by Age and Sex",
     subtitle = paste0("*** p < 0.001",
                       ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
   theme(plot.title = element_text(hjust = 0.5),
@@ -218,7 +221,7 @@ model_p_value <- pf(summary(KFA_by_MTR_age_sex)$fstatistic[1],
 pr <- predict_response(KFA_by_MTR_age_sex, c( "mtr [all]"))
 plot(pr, show_data = T, dot_alpha = 1, colors = "turquoise3") + 
   labs(
-    title = "Mean Right Amygdala KFA and MTR, Corrected by Age and Sex",
+    title = "C. Mean Right Amygdala KFA and MTR, Corrected by Age and Sex",
     subtitle = paste0("p = ", signif(model_p_value, 2),
                       ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
   theme(plot.title = element_text(hjust = 0.5),
@@ -233,7 +236,7 @@ model_p_value <- pf(summary(MK_by_MTR_age_sex)$fstatistic[1],
 pr <- predict_response(MK_by_MTR_age_sex, c( "mtr [all]"))
 plot(pr, show_data = T, dot_alpha = 1, colors = "turquoise3") + 
   labs(
-    title = "Mean Right Amygdala MK and MTR, Corrected by Age and Sex",
+    title = "D. Mean Right Amygdala MK and MTR, Corrected by Age and Sex",
     subtitle = paste0("p = ", signif(model_p_value, 2),
                       ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
   theme(plot.title = element_text(hjust = 0.5),

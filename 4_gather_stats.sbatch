@@ -7,7 +7,7 @@
 
 basedir=/gpfs/data/lazarlab/CamCan995
 # basedir=/Volumes/Research/lazarm03lab/labspace/AD/camcan995/
-projectdir=$basedir/derivatives/scd/main/
+projectdir=$basedir/derivatives/scd/aaic_2025/
 t1dir=$projectdir/freesurfer/
 
 module load freesurfer/7.4.1
