@@ -8,7 +8,7 @@ Running this code requires the following dependencies:
   - labelVector \>= 0.1.2
   - gtsummary \>= 2.0.4
   - ggeffects \>= 2.1.0
-  - ggtext \> 0.1.2
+  - ggtext \>= 0.1.2
 - FreeSurfer == 7.4.1
 - Singularity == 3.9.8
 - miniconda3 \>= 4.9.2

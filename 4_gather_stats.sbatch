@@ -5,7 +5,9 @@
 #SBATCH --mem=8G
 #SBATCH -o ./slurm_output/4_gather_stats/slurm-%A_%a.out
 
+#cluster basedir
 basedir=/gpfs/data/lazarlab/CamCan995
+# #local basedir
 # basedir=/Volumes/Research/lazarm03lab/labspace/AD/camcan995/
 projectdir=$basedir/derivatives/scd/aaic_2025/
 t1dir=$projectdir/freesurfer/

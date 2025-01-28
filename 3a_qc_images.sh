@@ -1,12 +1,14 @@
+# #cluster basedir
 # basedir=/gpfs/data/lazarlab/CamCan995/
+#local basedir
 basedir=/Volumes/Research/lazarm03lab/labspace/AD/camcan995/
 projectdir=$basedir/derivatives/scd/aaic_2025/
 t1dir=$projectdir/freesurfer/
 dwidir=$projectdir/dwi_processed/
 
+# #uncomment for Mate Desktop on cluster, comment out for local
 # export FREESURFER_HOME=/gpfs/share/apps/freesurfer/7.4.1/raw/freesurfer/
 # module load freesurfer/7.4.1
-export SUBJECTS_DIR=$t1dir
 # module load miniconda3/gpu/4.9.2
 # source activate ~/.conda/envs/fsl_eddy/
 # export FSLDIR=$CONDA_PREFIX
@@ -14,6 +16,7 @@ export SUBJECTS_DIR=$t1dir
 
 subj_list=$(cut -f1 -d$'\t' $projectdir/dwi_mti_over_55.tsv)
 subj_list=($subj_list)
+export SUBJECTS_DIR=$t1dir
 
 #generate QC webpage for freesurfer recon (WM and pial edges)
 if [ ! -f $t1dir/group_qc/recon/index.html ]; then
