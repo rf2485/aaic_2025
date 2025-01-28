@@ -2,10 +2,13 @@
 
 Running this code requires the following dependencies:
 
-- RStudio \>= 2023.09.1+494 with the following packages:
-  - base \>= 4.3.2
+- RStudio \>= 2024.12.0+467 with the following packages:
+  - base \>= 4.4.2
   - tidyverse \>= 2.0.0
-  - arsenal \>= 3.6.3
+  - labelVector \>= 0.1.2
+  - gtsummary \>= 2.0.4
+  - ggeffects \>= 2.1.0
+  - ggtext \> 0.1.2
 - FreeSurfer == 7.4.1
 - Singularity == 3.9.8
 - miniconda3 \>= 4.9.2
