@@ -1,5 +1,7 @@
 source("1_data_preparation.R")
 library(gtsummary)
+library(ggeffects)
+library(ggtext)
 
 failed_qc <- c('sub-CC510255', #SCD abnormality in left temporal pole
                'sub-CC510438', #CTL abnormality in left frontal lobe
@@ -156,17 +158,84 @@ right_amygdala_table <- right_amygdala %>%
 tbl_merge(list(left_amygdala_table, right_amygdala_table),
           tab_spanner = c("**Left Amygdala**", "**Right Amygdala**"))
 
+right_amygdala_na_omit <- mutate(right_amygdala,
+                      across(where(is.factor),~fct_explicit_na(.,'Unknown'))) %>%
+  na.omit(.)
+
 #scatterplots: neurodegen and demyelination
-NDI_by_KFA <- lm(fit_NDI ~ dki_kfa + SCD + Sex + Income + age_education_completed, right_amygdala)
-pr <- predict_response(NDI_by_KFA, c( "dki_kfa [all]", "SCD[all]"))
-plot(pr, show_residuals = T) + theme(legend.title = element_blank())
-NDI_by_MK <- lm(fit_NDI ~ dki_mk + SCD + Sex + Income + age_education_completed, right_amygdala)
-pr <- predict_response(NDI_by_MK, c( "dki_mk [all]", "SCD[all]"))
-plot(pr, show_residuals = T) + theme(legend.title = element_blank())
-MTR_by_KFA <- lm(mtr ~ dki_kfa + SCD + Sex + Income + age_education_completed, right_amygdala)
-pr <- predict_response(MTR_by_KFA, c( "dki_kfa [all]", "SCD[all]"))
-plot(pr, show_residuals = T) + theme(legend.title = element_blank())
-MTR_by_MK <- lm(mtr ~ dki_mk + SCD + Sex + Income + age_education_completed, right_amygdala)
-pr <- predict_response(MTR_by_MK, c( "dki_mk [all]", "SCD[all]"))
-plot(pr, show_residuals = T) + theme(legend.title = element_blank())
+KFA_by_NDI <- lm(dki_kfa ~ fit_NDI, right_amygdala_na_omit)
+KFA_by_NDI_scd <- lm(dki_kfa ~ fit_NDI + SCD, right_amygdala_na_omit)
+anova(KFA_by_NDI, KFA_by_NDI_scd)
+KFA_by_NDI_age <- lm(dki_kfa ~ fit_NDI + age, right_amygdala_na_omit)
+anova(KFA_by_NDI, KFA_by_NDI_age) #improvement
+KFA_by_NDI_age_sex <- lm(dki_kfa ~ fit_NDI + age + Sex, right_amygdala_na_omit)
+anova(KFA_by_NDI_age, KFA_by_NDI_age_sex) #improvement
+KFA_by_NDI_age_sex_education <- lm(dki_kfa ~ fit_NDI + age + Sex + age_education_completed, right_amygdala_na_omit)
+anova(KFA_by_NDI_age_sex, KFA_by_NDI_age_sex_education)
+KFA_by_NDI_age_sex_income <- lm(dki_kfa ~ fit_NDI + age + Sex + Income, right_amygdala_na_omit)
+anova(KFA_by_NDI_age_sex, KFA_by_NDI_age_sex_income)
+KFA_by_NDI_age_sex_ethnicity <- lm(dki_kfa ~ fit_NDI + age + Sex + Ethnicity, right_amygdala_na_omit)
+anova(KFA_by_NDI_age_sex, KFA_by_NDI_age_sex_ethnicity)
+
+#image width 570 height 481
+KFA_by_NDI_age_sex <- lm(dki_kfa ~ fit_NDI + age + Sex, right_amygdala)
+adj_r_squared <- summary(KFA_by_NDI_age_sex)$adj.r.squared
+model_p_value <- pf(summary(KFA_by_NDI_age_sex)$fstatistic[1], 
+                    summary(KFA_by_NDI_age_sex)$fstatistic[2], 
+                    summary(KFA_by_NDI_age_sex)$fstatistic[3], 
+                    lower.tail=F)
+pr <- predict_response(KFA_by_NDI_age_sex, c( "fit_NDI [all]"))
+plot(pr, show_data = T, dot_alpha = 1, colors = "darkorange") + 
+  labs(
+    title = "Mean Right Amygdala KFA and NDI, Corrected by Age and Sex",
+    subtitle = paste0("** p = ", signif(model_p_value, 2),
+                      ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_markdown(hjust = 0.5, face = "bold"))
+
+
+MK_by_NDI_age_sex <- lm(dki_mk ~ fit_NDI + age + Sex, right_amygdala)
+adj_r_squared <- summary(MK_by_NDI_age_sex)$adj.r.squared
+model_p_value <- pf(summary(MK_by_NDI_age_sex)$fstatistic[1], 
+                    summary(MK_by_NDI_age_sex)$fstatistic[2], 
+                    summary(MK_by_NDI_age_sex)$fstatistic[3], 
+                    lower.tail=F)
+pr <- predict_response(MK_by_NDI_age_sex, c( "fit_NDI [all]"))
+plot(pr, show_data = T, dot_alpha = 1, colors = "darkorange") + 
+  labs(
+    title = "Mean Right Amygdala MK and NDI, Corrected by Age and Sex",
+    subtitle = paste0("*** p < 0.001",
+                      ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_markdown(hjust = 0.5, face = "bold.italic"))
+
+KFA_by_MTR_age_sex <- lm(dki_kfa ~ mtr + age + Sex, right_amygdala)
+adj_r_squared <- summary(KFA_by_MTR_age_sex)$adj.r.squared
+model_p_value <- pf(summary(KFA_by_MTR_age_sex)$fstatistic[1], 
+                    summary(KFA_by_MTR_age_sex)$fstatistic[2], 
+                    summary(KFA_by_MTR_age_sex)$fstatistic[3], 
+                    lower.tail=F)
+pr <- predict_response(KFA_by_MTR_age_sex, c( "mtr [all]"))
+plot(pr, show_data = T, dot_alpha = 1, colors = "turquoise3") + 
+  labs(
+    title = "Mean Right Amygdala KFA and MTR, Corrected by Age and Sex",
+    subtitle = paste0("p = ", signif(model_p_value, 2),
+                      ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_markdown(hjust = 0.5))
+
+MK_by_MTR_age_sex <- lm(dki_mk ~ mtr + age + Sex, right_amygdala)
+adj_r_squared <- summary(MK_by_MTR_age_sex)$adj.r.squared
+model_p_value <- pf(summary(MK_by_MTR_age_sex)$fstatistic[1], 
+                    summary(MK_by_MTR_age_sex)$fstatistic[2], 
+                    summary(MK_by_MTR_age_sex)$fstatistic[3], 
+                    lower.tail=F)
+pr <- predict_response(MK_by_MTR_age_sex, c( "mtr [all]"))
+plot(pr, show_data = T, dot_alpha = 1, colors = "turquoise3") + 
+  labs(
+    title = "Mean Right Amygdala MK and MTR, Corrected by Age and Sex",
+    subtitle = paste0("p = ", signif(model_p_value, 2),
+                      ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_markdown(hjust = 0.5))
 
