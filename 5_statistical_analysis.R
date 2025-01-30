@@ -19,14 +19,6 @@ scd_status <- dwi_mti_over_55 %>% select(participant_id, SCD, mt_tr,
                                          Income, Ethnicity, Sex, age, age_education_completed) %>%
   filter(!participant_id %in% failed_qc)
 
-
-#import aseg stats table (subcortical volumes)
-volumes <- read_tsv("freesurfer/asegtable.tsv") %>%
-  rename(participant_id=`Measure:volume`) %>%
-  mutate(across(c(3:ncol(.)), .fns = ~.*1000/EstimatedTotalIntraCranialVol)) %>% #normalize by intracranial volume
-  left_join(scd_status, .)
-names(volumes) <- make.names(names(volumes))
-
 #read in diffusion and MTR tables
 aparc2meas_files <- list.files(path = "freesurfer", 
                                pattern = "aparc.*aseg.*\\.*tsv", 
@@ -37,24 +29,11 @@ for (i in 1:length(aparc2meas_files)) {
          read.delim(aparc2meas_files[i]))
 }
 
-fit_FWF <- aseg2fit_FWF %>%
-  rename(participant_id = Measure.mean) %>%
-  left_join(scd_status, .)
-  
-
 fit_NDI <- aseg2fit_NDI %>%
   rename(participant_id = Measure.mean) %>%
   left_join(scd_status, .)
 
 fit_ODI <- aseg2fit_ODI %>%
-  rename(participant_id = Measure.mean) %>%
-  left_join(scd_status, .)
-
-dti_fa <- aseg2dti_fa %>%
-  rename(participant_id = Measure.mean) %>%
-  left_join(scd_status, .)
-
-dti_md <- aseg2dti_md %>%
   rename(participant_id = Measure.mean) %>%
   left_join(scd_status, .)
 
@@ -66,62 +45,70 @@ dki_mk <- aseg2dki_mk %>%
   rename(participant_id = Measure.mean) %>%
   left_join(scd_status, .)
 
+dki_ak <- aseg2dki_ak %>%
+  rename(participant_id = Measure.mean) %>%
+  left_join(scd_status, .)
+
+dki_rk <- aseg2dki_rk %>%
+  rename(participant_id = Measure.mean) %>%
+  left_join(scd_status, .)
+
 mtr <- aseg2mtr %>%
   rename(participant_id = Measure.mean) %>%
   left_join(scd_status, .)
 
-left_amygdala <- volumes %>% dplyr::select(participant_id:age_education_completed, Left.Amygdala) %>%
-  rename(volume = "Left.Amygdala")
 left_amygdala <- fit_NDI %>% dplyr::select(participant_id:age_education_completed, Left.Amygdala) %>%
-  rename(fit_NDI = "Left.Amygdala") %>% full_join(left_amygdala, .)
-left_amygdala <- dti_fa %>% dplyr::select(participant_id:age_education_completed, Left.Amygdala) %>%
-  rename(dti_fa = "Left.Amygdala") %>% full_join(left_amygdala, .)
+  rename(fit_NDI = "Left.Amygdala")
+left_amygdala <- fit_ODI %>% dplyr::select(participant_id:age_education_completed, Left.Amygdala) %>%
+  rename(fit_ODI = "Left.Amygdala") %>% full_join(left_amygdala, .)
 left_amygdala <- dki_kfa %>% dplyr::select(participant_id:age_education_completed, Left.Amygdala) %>%
   rename(dki_kfa = "Left.Amygdala") %>% full_join(left_amygdala, .)
-left_amygdala <- dti_md %>% dplyr::select(participant_id:age_education_completed, Left.Amygdala) %>%
-  rename(dti_md = "Left.Amygdala") %>% full_join(left_amygdala, .)
 left_amygdala <- dki_mk %>% dplyr::select(participant_id:age_education_completed, Left.Amygdala) %>%
   rename(dki_mk = "Left.Amygdala") %>% full_join(left_amygdala, .)
+left_amygdala <- dki_ak %>% dplyr::select(participant_id:age_education_completed, Left.Amygdala) %>%
+  rename(dki_ak = "Left.Amygdala") %>% full_join(left_amygdala, .)
+left_amygdala <- dki_rk %>% dplyr::select(participant_id:age_education_completed, Left.Amygdala) %>%
+  rename(dki_rk = "Left.Amygdala") %>% full_join(left_amygdala, .)
 left_amygdala <- mtr %>% dplyr::select(participant_id:age_education_completed, Left.Amygdala) %>%
   rename(mtr = "Left.Amygdala") %>% full_join(left_amygdala, .) %>%
   filter(!participant_id %in% failed_qc) %>%
   filter(mt_tr=="TR=30ms")
 
 left_amygdala <- set_label(left_amygdala,
-  volume = "Anatomical Volume",
-  fit_NDI = "NODDI Neurite Density Index (NDI)",
-  dti_fa = "DTI Fractional Anisotropy (FA)",
+  fit_NDI = "NODDI Neurite Density (ND)",
+  fit_ODI = "NODDI Orientation Dispersion (OD)",
   dki_kfa = "DKI Kurtosis Fractional Anisotropy (KFA)",
-  dti_md = "DTI Mean Diffusivity (MD)",
   dki_mk = "DKI Mean Kurtosis (MK)",
-  mtr = "Magnetization Transfer Ratio"
+  dki_ak = "DKI Axial Kurtosis (AK)",
+  dki_rk = "DKI Radial Kurtosis (RK)",
+  mtr = "Magnetization Transfer Ratio (MTR)"
 )
 
-right_amygdala <- volumes %>% dplyr::select(participant_id:age_education_completed, Right.Amygdala) %>%
-  rename(volume = "Right.Amygdala")
 right_amygdala <- fit_NDI %>% dplyr::select(participant_id:age_education_completed, Right.Amygdala) %>%
-  rename(fit_NDI = "Right.Amygdala") %>% full_join(right_amygdala, .)
-right_amygdala <- dti_fa %>% dplyr::select(participant_id:age_education_completed, Right.Amygdala) %>%
-  rename(dti_fa = "Right.Amygdala") %>% full_join(right_amygdala, .)
+  rename(fit_NDI = "Right.Amygdala")
+right_amygdala <- fit_ODI %>% dplyr::select(participant_id:age_education_completed, Right.Amygdala) %>%
+  rename(fit_ODI = "Right.Amygdala") %>% full_join(right_amygdala, .)
 right_amygdala <- dki_kfa %>% dplyr::select(participant_id:age_education_completed, Right.Amygdala) %>%
   rename(dki_kfa = "Right.Amygdala") %>% full_join(right_amygdala, .)
-right_amygdala <- dti_md %>% dplyr::select(participant_id:age_education_completed, Right.Amygdala) %>%
-  rename(dti_md = "Right.Amygdala") %>% full_join(right_amygdala, .)
 right_amygdala <- dki_mk %>% dplyr::select(participant_id:age_education_completed, Right.Amygdala) %>%
   rename(dki_mk = "Right.Amygdala") %>% full_join(right_amygdala, .)
+right_amygdala <- dki_ak %>% dplyr::select(participant_id:age_education_completed, Right.Amygdala) %>%
+  rename(dki_ak = "Right.Amygdala") %>% full_join(right_amygdala, .)
+right_amygdala <- dki_rk %>% dplyr::select(participant_id:age_education_completed, Right.Amygdala) %>%
+  rename(dki_rk = "Right.Amygdala") %>% full_join(right_amygdala, .)
 right_amygdala <- mtr %>% dplyr::select(participant_id:age_education_completed, Right.Amygdala) %>%
   rename(mtr = "Right.Amygdala") %>% full_join(right_amygdala, .) %>%
   filter(!participant_id %in% failed_qc) %>%
   filter(mt_tr=="TR=30ms")
 
 right_amygdala <- set_label(right_amygdala,
-                           volume = "Anatomical Volume",
-                           fit_NDI = "NODDI Neurite Density Index (NDI)",
-                           dti_fa = "DTI Fractional Anisotropy (FA)",
+                           fit_NDI = "NODDI Neurite Density (ND)",
+                           fit_ODI = "NODDI Orientation Dispersion (OD)",
                            dki_kfa = "DKI Kurtosis Fractional Anisotropy (KFA)",
-                           dti_md = "DTI Mean Diffusivity (MD)",
                            dki_mk = "DKI Mean Kurtosis (MK)",
-                           mtr = "Magnetization Transfer Ratio"
+                           dki_ak = "DKI Axial Kurtosis (AK)",
+                           dki_rk = "DKI Radial Kurtosis (RK)",
+                           mtr = "Magnetization Transfer Ratio (MTR)"
 )
 
 #group means of mtr tr30 subset
@@ -130,7 +117,7 @@ left_amygdala %>%
   tbl_summary(by = SCD, statistic = all_continuous() ~ "{mean} ({sd})") %>% add_p()
 
 left_amygdala_table <- left_amygdala %>% 
-  select(SCD, volume, fit_NDI, dti_fa, dki_kfa, dti_md, dki_mk, mtr) %>% 
+  select(SCD, fit_NDI, fit_ODI, dki_kfa, dki_mk, dki_ak, dki_rk, mtr) %>% 
   tbl_summary(by = SCD, statistic = all_continuous() ~ "{mean} ({sd})",
               # missing = "no"
               missing_text = "Excluded Outliers"
@@ -143,7 +130,7 @@ left_amygdala_table <- left_amygdala %>%
                 estimate ~ "**Effect Size**")
 
 right_amygdala_table <- right_amygdala %>% 
-  select(SCD, volume, fit_NDI, dti_fa, dki_kfa, dti_md, dki_mk, mtr) %>% 
+  select(SCD, fit_NDI, fit_ODI, dki_kfa, dki_mk, dki_ak, dki_rk, mtr) %>% 
   tbl_summary(by = SCD, statistic = all_continuous() ~ "{mean} ({sd})",
               # missing = "no"
               missing_text = "Excluded Outliers"
@@ -196,7 +183,6 @@ plot(pr, show_data = T, dot_alpha = 1, colors = "darkorange") +
   theme(plot.title = element_text(hjust = 0.5),
         plot.subtitle = element_markdown(hjust = 0.5, face = "bold"))
 
-
 MK_by_NDI_age_sex <- lm(dki_mk ~ fit_NDI + age + Sex, right_amygdala)
 adj_r_squared <- summary(MK_by_NDI_age_sex)$adj.r.squared
 model_p_value <- pf(summary(MK_by_NDI_age_sex)$fstatistic[1], 
@@ -210,7 +196,67 @@ plot(pr, show_data = T, dot_alpha = 1, colors = "darkorange") +
     subtitle = paste0("*** p < 0.001",
                       ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
   theme(plot.title = element_text(hjust = 0.5),
-        plot.subtitle = element_markdown(hjust = 0.5, face = "bold.italic"))
+        plot.subtitle = element_markdown(hjust = 0.5, face = "bold"))
+
+RK_by_NDI_age_sex <- lm(dki_rk ~ fit_NDI + age + Sex, right_amygdala)
+adj_r_squared <- summary(RK_by_NDI_age_sex)$adj.r.squared
+model_p_value <- pf(summary(RK_by_NDI_age_sex)$fstatistic[1], 
+                    summary(RK_by_NDI_age_sex)$fstatistic[2], 
+                    summary(RK_by_NDI_age_sex)$fstatistic[3], 
+                    lower.tail=F)
+pr <- predict_response(RK_by_NDI_age_sex, c( "fit_NDI [all]"))
+plot(pr, show_data = T, dot_alpha = 1, colors = "darkorange") + 
+  labs(
+    title = "C. Mean Right Amygdala RK and NDI, Corrected by Age and Sex",
+    subtitle = paste0("*** p < 0.001",
+                      ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_markdown(hjust = 0.5, face = "bold"))
+
+KFA_by_ODI_age_sex <- lm(dki_kfa ~ fit_ODI + age + Sex, right_amygdala)
+adj_r_squared <- summary(KFA_by_ODI_age_sex)$adj.r.squared
+model_p_value <- pf(summary(KFA_by_ODI_age_sex)$fstatistic[1], 
+                    summary(KFA_by_ODI_age_sex)$fstatistic[2], 
+                    summary(KFA_by_ODI_age_sex)$fstatistic[3], 
+                    lower.tail=F)
+pr <- predict_response(KFA_by_ODI_age_sex, c( "fit_ODI [all]"))
+plot(pr, show_data = T, dot_alpha = 1, colors = "purple") + 
+  labs(
+    title = "D. Mean Right Amygdala KFA and ODI, Corrected by Age and Sex",
+    subtitle = paste0("p = ", signif(model_p_value, 2),
+                      ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_markdown(hjust = 0.5))
+
+MK_by_ODI_age_sex <- lm(dki_mk ~ fit_ODI + age + Sex, right_amygdala)
+adj_r_squared <- summary(MK_by_ODI_age_sex)$adj.r.squared
+model_p_value <- pf(summary(MK_by_ODI_age_sex)$fstatistic[1], 
+                    summary(MK_by_ODI_age_sex)$fstatistic[2], 
+                    summary(MK_by_ODI_age_sex)$fstatistic[3], 
+                    lower.tail=F)
+pr <- predict_response(MK_by_ODI_age_sex, c( "fit_ODI [all]"))
+plot(pr, show_data = T, dot_alpha = 1, colors = "purple") + 
+  labs(
+    title = "E. Mean Right Amygdala MK and ODI, Corrected by Age and Sex",
+    subtitle = paste0("\\* p = ", signif(model_p_value, 2),
+                      ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_markdown(hjust = 0.5, face = "bold"))
+
+RK_by_ODI_age_sex <- lm(dki_rk ~ fit_ODI + age + Sex, right_amygdala)
+adj_r_squared <- summary(RK_by_ODI_age_sex)$adj.r.squared
+model_p_value <- pf(summary(RK_by_ODI_age_sex)$fstatistic[1], 
+                    summary(RK_by_ODI_age_sex)$fstatistic[2], 
+                    summary(RK_by_ODI_age_sex)$fstatistic[3], 
+                    lower.tail=F)
+pr <- predict_response(RK_by_ODI_age_sex, c( "fit_ODI [all]"))
+plot(pr, show_data = T, dot_alpha = 1, colors = "purple") + 
+  labs(
+    title = "F. Mean Right Amygdala RK and ODI, Corrected by Age and Sex",
+    subtitle = paste0("p = ", signif(model_p_value, 2),
+                      ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_markdown(hjust = 0.5))
 
 KFA_by_MTR_age_sex <- lm(dki_kfa ~ mtr + age + Sex, right_amygdala)
 adj_r_squared <- summary(KFA_by_MTR_age_sex)$adj.r.squared
@@ -221,7 +267,7 @@ model_p_value <- pf(summary(KFA_by_MTR_age_sex)$fstatistic[1],
 pr <- predict_response(KFA_by_MTR_age_sex, c( "mtr [all]"))
 plot(pr, show_data = T, dot_alpha = 1, colors = "turquoise3") + 
   labs(
-    title = "C. Mean Right Amygdala KFA and MTR, Corrected by Age and Sex",
+    title = "G. Mean Right Amygdala KFA and MTR, Corrected by Age and Sex",
     subtitle = paste0("p = ", signif(model_p_value, 2),
                       ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
   theme(plot.title = element_text(hjust = 0.5),
@@ -236,9 +282,24 @@ model_p_value <- pf(summary(MK_by_MTR_age_sex)$fstatistic[1],
 pr <- predict_response(MK_by_MTR_age_sex, c( "mtr [all]"))
 plot(pr, show_data = T, dot_alpha = 1, colors = "turquoise3") + 
   labs(
-    title = "D. Mean Right Amygdala MK and MTR, Corrected by Age and Sex",
+    title = "H. Mean Right Amygdala MK and MTR, Corrected by Age and Sex",
     subtitle = paste0("p = ", signif(model_p_value, 2),
                       ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
   theme(plot.title = element_text(hjust = 0.5),
         plot.subtitle = element_markdown(hjust = 0.5))
 
+
+RK_by_MTR_age_sex <- lm(dki_rk ~ mtr + age + Sex, right_amygdala)
+adj_r_squared <- summary(RK_by_MTR_age_sex)$adj.r.squared
+model_p_value <- pf(summary(RK_by_MTR_age_sex)$fstatistic[1], 
+                    summary(RK_by_MTR_age_sex)$fstatistic[2], 
+                    summary(RK_by_MTR_age_sex)$fstatistic[3], 
+                    lower.tail=F)
+pr <- predict_response(RK_by_MTR_age_sex, c( "mtr [all]"))
+plot(pr, show_data = T, dot_alpha = 1, colors = "turquoise3") + 
+  labs(
+    title = "I. Mean Right Amygdala RK and MTR, Corrected by Age and Sex",
+    subtitle = paste0("p = ", signif(model_p_value, 2),
+                      ", adj-R<sup>2</sup> = ", signif(adj_r_squared, 2))) +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_markdown(hjust = 0.5))
